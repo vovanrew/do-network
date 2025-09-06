@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Головна - Gomin{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="mb-4">
+            <h1 class="h2">Останні події</h1>
+        </div>
+    </div>
+</div>
+
+{% if rooms %}
+<div class="row g-4">
+    {% for room in rooms %}
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="card h-100 room-card shadow-sm hover-shadow">
+            <div class="card-body">
+                <h5 class="card-title mb-1">{{ room.room_name }}</h5>
+                <p class="text-muted small mb-3">від команди "{{ room.team_name }}"</p>
+                
+                <p class="card-text">
+                    {% if room.content|length > 100 %}
+                        {{ room.content[:100] }}...
+                    {% else %}
+                        {{ room.content }}
+                    {% endif %}
+                </p>
+                
+                <div class="d-flex justify-content-between align-items-center mt-auto">
+                    <div class="small text-muted">
+                        <i class="bi bi-clock me-1"></i>{{ room.created_at|time_ago }}
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-primary me-2">
+                            <i class="bi bi-heart-fill me-1"></i>{{ room.likes_count }}
+                        </span>
+                        <span class="badge bg-secondary">
+                            <i class="bi bi-chat-dots-fill me-1"></i>{{ room.comments|length }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent">
+                <a href="{{ url_for('room_detail', room_id=room.id) }}" class="btn btn-sm btn-outline-primary w-100 stretched-link">
+                    Переглянути
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-info text-center py-5">
+            <h4 class="alert-heading">Поки що немає подій</h4>
+            <p class="mb-0">Будьте першими та створіть нову подію!</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Плаваюча кнопка створення події -->
+<a href="{{ url_for('create_room') }}" class="floating-add-btn" title="Створити нову подію">
+    <i class="bi bi-plus"></i>
+</a>
+{% endblock %}

@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}{{ room.room_name }} - Gomin{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 col-lg-8 mx-auto">
+        <!-- Інформація про кімнату -->
+        <div class="card shadow mb-4">
+            <div class="card-body">
+                <h1 class="h2 mb-1">{{ room.room_name }}</h1>
+                <p class="text-muted mb-3">
+                    від команди "{{ room.team_name }}" • {{ room.created_at|time_ago }}
+                </p>
+                
+                <div class="mb-4">
+                    <p class="lead">{{ room.content }}</p>
+                </div>
+                
+                <div class="d-flex align-items-center gap-3">
+                    <button id="likeBtn" 
+                            class="btn btn-outline-primary like-btn" 
+                            data-room-id="{{ room.id }}"
+                            data-liked="{{ 'true' if user_liked else 'false' }}">
+                        <i class="bi bi-heart{{ '-fill' if user_liked else '' }} me-2"></i>
+                        Ну лайк! (<span id="likesCount">{{ room.likes_count }}</span>)
+                    </button>
+                    
+                    <span class="text-muted">
+                        <i class="bi bi-chat-dots me-1"></i>
+                        {{ comments|length }} коментарів
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Форма додавання коментаря -->
+        <div class="card shadow mb-4">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Додати коментар</h5>
+                <form method="POST" action="{{ url_for('add_comment', room_id=room.id) }}">
+                    <div class="row mb-3">
+                        <div class="col-12 col-md-6">
+                            <label for="player_name" class="form-label">Ваше ім'я</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="player_name" 
+                                   name="player_name" 
+                                   placeholder="Анонім"
+                                   maxlength="100">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label for="team_name" class="form-label">Команда (необов'язково)</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="team_name" 
+                                   name="team_name" 
+                                   maxlength="100">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="content" class="form-label">Коментар <span class="text-danger">*</span></label>
+                        <textarea class="form-control" 
+                                  id="content" 
+                                  name="content" 
+                                  rows="3" 
+                                  maxlength="500"
+                                  required
+                                  placeholder="Напишіть ваш коментар..."></textarea>
+                        <div class="form-text">Максимум 500 символів</div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-send me-2"></i>Відправити коментар
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Список коментарів -->
+        <div id="comments">
+            <h5 class="mb-3">Коментарі ({{ comments|length }})</h5>
+            
+            {% if comments %}
+                {% for comment in comments %}
+                <div class="card mb-3 comment-card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <strong>{{ comment.player_name }}</strong>
+                                {% if comment.team_name %}
+                                    <span class="badge bg-secondary ms-2">{{ comment.team_name }}</span>
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">{{ comment.created_at|time_ago }}</small>
+                        </div>
+                        <p class="mb-0">{{ comment.content }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-info">
+                    Поки що немає коментарів. Будьте першими!
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Обробка лайків
+document.addEventListener('DOMContentLoaded', function() {
+    const likeBtn = document.getElementById('likeBtn');
+    const likesCount = document.getElementById('likesCount');
+    
+    likeBtn.addEventListener('click', async function() {
+        const roomId = this.getAttribute('data-room-id');
+        
+        try {
+            const response = await fetch(`/room/${roomId}/like`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                likesCount.textContent = data.likes_count;
+                
+                const icon = this.querySelector('i');
+                if (data.liked) {
+                    icon.classList.remove('bi-heart');
+                    icon.classList.add('bi-heart-fill');
+                    this.setAttribute('data-liked', 'true');
+                } else {
+                    icon.classList.remove('bi-heart-fill');
+                    icon.classList.add('bi-heart');
+                    this.setAttribute('data-liked', 'false');
+                }
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    });
+});
+</script>
+
+<!-- Плаваюча кнопка створення події -->
+<a href="{{ url_for('create_room') }}" class="floating-add-btn" title="Створити нову подію">
+    <i class="bi bi-plus"></i>
+</a>
+{% endblock %}
