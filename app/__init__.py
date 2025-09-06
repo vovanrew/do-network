@@ -5,3 +5,4 @@ This allows 'from app import app' to work.
 from .app import app
 
 __all__ = ['app']
+
