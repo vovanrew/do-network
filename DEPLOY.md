@@ -64,7 +64,7 @@ Test the production setup locally:
 ```bash
 pip install -r requirements.txt
 python build.py
-gunicorn --chdir app app:app
+gunicorn wsgi:app
 ```
 
 Then visit http://localhost:8000

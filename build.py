@@ -5,11 +5,11 @@ Build script for initializing the database on Render
 import os
 import sys
 
-# Add the app directory to the Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'app'))
+# Add the current directory to the Python path
+sys.path.insert(0, os.path.dirname(__file__))
 
-from app import app
-from models import db
+from app.app import app
+from app.models import db
 
 def init_database():
     """Initialize the database with tables"""

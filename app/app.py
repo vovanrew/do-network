@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import uuid
 import os
-from models import db, Room, Comment, Like
+from .models import db, Room, Comment, Like
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
