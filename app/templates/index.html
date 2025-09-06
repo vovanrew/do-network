@@ -21,10 +21,11 @@
                 <p class="text-muted small mb-3">від команди "{{ room.team_name }}"</p>
                 
                 <p class="card-text">
-                    {% if room.content|length > 100 %}
-                        {{ room.content[:100] }}...
+                    {% set formatted_content = room.content|format_text|strip_tags %}
+                    {% if formatted_content|length > 100 %}
+                        {{ formatted_content[:100] }}...
                     {% else %}
-                        {{ room.content }}
+                        {{ formatted_content }}
                     {% endif %}
                 </p>
                 

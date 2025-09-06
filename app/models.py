@@ -27,6 +27,10 @@ class Comment(db.Model):
     team_name = db.Column(db.String(100), nullable=True)
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    likes_count = db.Column(db.Integer, default=0)
+    
+    # Відношення з лайками коментарів
+    likes = db.relationship('CommentLike', backref='comment', lazy=True, cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<Comment by {self.player_name}>'
@@ -43,3 +47,16 @@ class Like(db.Model):
     
     def __repr__(self):
         return f'<Like room_id={self.room_id}>'
+
+class CommentLike(db.Model):
+    """Модель лайків коментарів (для запобігання зловживанням)"""
+    id = db.Column(db.Integer, primary_key=True)
+    comment_id = db.Column(db.Integer, db.ForeignKey('comment.id'), nullable=False)
+    session_id = db.Column(db.String(100), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Унікальний індекс для запобігання множинним лайкам від однієї сесії
+    __table_args__ = (db.UniqueConstraint('comment_id', 'session_id', name='_comment_session_uc'),)
+    
+    def __repr__(self):
+        return f'<CommentLike comment_id={self.comment_id}>'

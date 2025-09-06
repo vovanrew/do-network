@@ -4,7 +4,9 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import uuid
 import os
-from .models import db, Room, Comment, Like
+import re
+from markupsafe import escape, Markup
+from .models import db, Room, Comment, Like, CommentLike
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
@@ -43,6 +45,44 @@ def format_time_ago(time):
 
 # Реєстрація функції як фільтру для шаблонів
 app.jinja_env.filters['time_ago'] = format_time_ago
+
+# Функція для форматування тексту з базовими стилями
+def format_text(text):
+    """Форматує текст з підтримкою базових стилів"""
+    if not text:
+        return ''
+    
+    # Спочатку екрануємо HTML для безпеки
+    text = str(escape(text))
+    
+    # Конвертуємо переноси рядків у <br>
+    text = text.replace('\r\n', '<br>')  # Windows-style line endings
+    text = text.replace('\n', '<br>')    # Unix-style line endings
+    text = text.replace('\\n', '<br>')   # Literal \n sequences
+    
+    # Підтримка жирного тексту **текст**
+    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+    
+    # Підтримка курсиву *текст* (але не плутати з жирним)
+    text = re.sub(r'(?<!\*)\*([^\*]+?)\*(?!\*)', r'<em>\1</em>', text)
+    
+    # Робимо URL клікабельними
+    url_pattern = r'(https?://[^\s<>"{}|\\^`\[\]]+)'
+    text = re.sub(url_pattern, r'<a href="\1" target="_blank" rel="noopener noreferrer">\1</a>', text)
+    
+    return Markup(text)
+
+# Реєстрація фільтру форматування тексту
+app.jinja_env.filters['format_text'] = format_text
+
+# Функція для видалення HTML тегів (для превью)
+def strip_tags(text):
+    """Видаляє HTML теги з тексту"""
+    clean = re.compile('<.*?>')
+    return re.sub(clean, '', text)
+
+# Реєстрація фільтру для видалення тегів
+app.jinja_env.filters['strip_tags'] = strip_tags
 
 # Middleware для генерації session_id
 @app.before_request
@@ -103,7 +143,7 @@ def create_room():
 def room_detail(room_id):
     """Детальна сторінка кімнати"""
     room = Room.query.get_or_404(room_id)
-    comments = Comment.query.filter_by(room_id=room_id).order_by(Comment.created_at.desc()).all()
+    comments = Comment.query.filter_by(room_id=room_id).order_by(Comment.created_at.asc()).all()
     
     # Перевірка, чи користувач вже лайкав цю кімнату
     user_liked = False
@@ -111,7 +151,17 @@ def room_detail(room_id):
         like = Like.query.filter_by(room_id=room_id, session_id=session['session_id']).first()
         user_liked = like is not None
     
-    return render_template('room.html', room=room, comments=comments, user_liked=user_liked)
+    # Перевірка лайків для коментарів
+    comment_likes = {}
+    if 'session_id' in session and comments:
+        comment_ids = [comment.id for comment in comments]
+        liked_comments = CommentLike.query.filter(
+            CommentLike.comment_id.in_(comment_ids),
+            CommentLike.session_id == session['session_id']
+        ).all()
+        comment_likes = {like.comment_id: True for like in liked_comments}
+    
+    return render_template('room.html', room=room, comments=comments, user_liked=user_liked, comment_likes=comment_likes)
 
 @app.route('/room/<int:room_id>/like', methods=['POST'])
 def like_room(room_id):
@@ -140,6 +190,36 @@ def like_room(room_id):
     
     return jsonify({
         'likes_count': room.likes_count,
+        'liked': liked
+    })
+
+@app.route('/comment/<int:comment_id>/like', methods=['POST'])
+def like_comment(comment_id):
+    """AJAX endpoint для лайку коментаря"""
+    comment = Comment.query.get_or_404(comment_id)
+    
+    if 'session_id' not in session:
+        return jsonify({'error': 'Session not found'}), 400
+    
+    # Перевірка, чи користувач вже лайкав
+    existing_like = CommentLike.query.filter_by(comment_id=comment_id, session_id=session['session_id']).first()
+    
+    if existing_like:
+        # Видалення лайку
+        db.session.delete(existing_like)
+        comment.likes_count = max(0, comment.likes_count - 1)
+        liked = False
+    else:
+        # Додавання лайку
+        new_like = CommentLike(comment_id=comment_id, session_id=session['session_id'])
+        db.session.add(new_like)
+        comment.likes_count += 1
+        liked = True
+    
+    db.session.commit()
+    
+    return jsonify({
+        'likes_count': comment.likes_count,
         'liked': liked
     })
 
