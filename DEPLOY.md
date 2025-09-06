@@ -58,13 +58,23 @@ If deployment fails:
 3. Verify Python version compatibility
 4. Check that `build.py` runs without errors locally
 
+### Common Issues
+
+**"Failed to find attribute 'app' in 'app'" Error**
+This error occurs when gunicorn can't find the Flask app. The application supports multiple entry points:
+- `gunicorn application:app` - Uses application.py (recommended)
+- `gunicorn app:app` - Uses app/__init__.py
+- `gunicorn wsgi:app` - Uses wsgi.py
+
+The Procfile and render.yaml are configured to use `application:app` for consistency.
+
 ## Local Testing Before Deploy
 
 Test the production setup locally:
 ```bash
 pip install -r requirements.txt
 python build.py
-gunicorn wsgi:app
+gunicorn application:app
 ```
 
 Then visit http://localhost:8000
